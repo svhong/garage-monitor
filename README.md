@@ -45,7 +45,8 @@ sudo ./install.sh
 
 The installer will:
 
-1. Install `python3-psutil`, plus `intel-gpu-tools` on Intel machines.
+1. Detect the distro and install `python3-psutil`, plus the Intel GPU tools on
+   Intel machines (`intel-gpu-tools` with apt, `igt-gpu-tools` with dnf).
 2. Create a locked-down system user `gmon` (no login, no home folder).
 3. Copy the program to `/opt/garage-monitor` and its settings to `/etc/garage-monitor`.
 4. Set up two systemd services that start on boot:
@@ -68,7 +69,7 @@ address allowed (`--allow-origin https://your-site.com`).
 
 ## Add another machine later
 
-On the new machine (Ubuntu/Debian, signed in to Tailscale):
+On the new machine (Ubuntu/Debian or Fedora/RHEL, signed in to Tailscale):
 
 ```bash
 sudo ./install.sh --agent-only --hub http://HUB-IP:8787 --token TOKEN

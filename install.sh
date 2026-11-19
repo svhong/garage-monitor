@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# garage-monitor installer for Ubuntu/Debian.
+# garage-monitor installer for Ubuntu/Debian and Fedora/RHEL.
 #
 #   sudo ./install.sh                         hub + agent (run this on hermes-box)
 #   sudo ./install.sh --agent-only --hub URL --token TOKEN
@@ -75,11 +75,31 @@ if [[ $ROLE == uninstall ]]; then
   systemctl daemon-reload
   rm -rf "$PREFIX" "$CONF"
   id "$SVC_USER" &>/dev/null && userdel "$SVC_USER" || true
-  say "Removed. (Packages python3-psutil and intel-gpu-tools were left installed.)"
+  say "Removed. (Packages python3-psutil and the Intel GPU tools were left installed.)"
   exit 0
 fi
 
-command -v apt-get >/dev/null || die "this installer supports Ubuntu/Debian only"
+# --- which distro? --------------------------------------------------------------
+# /etc/os-release names the distro (ID) and what it's based on (ID_LIKE),
+# e.g. ID=pop ID_LIKE="ubuntu debian" or ID=fedora.
+OS_IDS=""
+if [[ -r /etc/os-release ]]; then
+  OS_IDS="$(. /etc/os-release; echo "${ID:-} ${ID_LIKE:-}")"
+fi
+PKG_MGR=""
+case " $OS_IDS " in
+  *" debian "*|*" ubuntu "*)                     PKG_MGR=apt ;;
+  *" fedora "*|*" rhel "*|*" centos "*)          PKG_MGR=dnf ;;
+esac
+# No os-release, or a distro we don't recognise: go by what's installed.
+if [[ -z $PKG_MGR ]]; then
+  if   command -v apt-get >/dev/null; then PKG_MGR=apt
+  elif command -v dnf     >/dev/null; then PKG_MGR=dnf
+  fi
+fi
+[[ -n $PKG_MGR ]] || die "unsupported Linux (${OS_IDS:-unknown}); this installer supports Ubuntu/Debian and Fedora/RHEL"
+command -v "$([[ $PKG_MGR == apt ]] && echo apt-get || echo dnf)" >/dev/null \
+  || die "detected ${OS_IDS% *} but its package manager ($PKG_MGR) is missing"
 command -v tailscale >/dev/null || die "Tailscale is not installed"
 command -v systemctl >/dev/null || die "systemd is required"
 
@@ -88,13 +108,24 @@ if [[ $ROLE == agent ]]; then
 fi
 
 # --- packages --------------------------------------------------------------
+# Same tools, different package names per distro.
 PKGS=(python3 python3-psutil)
+GPU_PKG=""
 if grep -qs 0x8086 /sys/class/drm/card*/device/vendor; then
-  PKGS+=(intel-gpu-tools)   # Intel GPU load and chip power
+  # Intel GPU load and chip power
+  if [[ $PKG_MGR == apt ]]; then GPU_PKG=intel-gpu-tools; else GPU_PKG=igt-gpu-tools; fi
 fi
-say "Installing packages: ${PKGS[*]}"
-apt-get update -qq >/dev/null
-apt-get install -y -qq "${PKGS[@]}" >/dev/null
+say "Installing packages with $PKG_MGR: ${PKGS[*]} $GPU_PKG"
+if [[ $PKG_MGR == apt ]]; then
+  apt-get update -qq >/dev/null
+  apt-get install -y -qq "${PKGS[@]}" >/dev/null
+  [[ -z $GPU_PKG ]] || apt-get install -y -qq "$GPU_PKG" >/dev/null \
+    || echo "!! couldn't install $GPU_PKG; GPU load and chip power won't be shown" >&2
+else
+  dnf install -y -q "${PKGS[@]}" >/dev/null
+  [[ -z $GPU_PKG ]] || dnf install -y -q "$GPU_PKG" >/dev/null \
+    || echo "!! couldn't install $GPU_PKG; GPU load and chip power won't be shown" >&2
+fi
 
 # --- service user ------------------------------------------------------------
 if ! id "$SVC_USER" &>/dev/null; then
