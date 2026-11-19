@@ -263,8 +263,8 @@ def main():
     if "--hash-password" in sys.argv:
         # Reads the password from stdin when piped, otherwise asks for it.
         pw = sys.stdin.readline().rstrip("\n") if not sys.stdin.isatty() else getpass.getpass("Viewer password: ")
-        if len(pw) < 8:
-            raise SystemExit("password must be at least 8 characters")
+        if len(pw) < 4:
+            raise SystemExit("password must be at least 4 characters")
         print(hash_password(pw))
         return
 

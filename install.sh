@@ -176,7 +176,7 @@ if [[ $ROLE == all ]]; then
 
   if [[ $SET_PASSWORD -eq 1 || ( -z $PW_HASH && -t 0 ) ]]; then
     echo
-    echo "Choose a viewer password for the dashboard (at least 8 characters)."
+    echo "Choose a viewer password for the dashboard (at least 4 characters)."
     [[ -z $PW_HASH ]] && echo "Press Enter without typing to skip (anyone on your Tailscale could then view it)."
     while true; do
       read -rsp "Password: " PW1; echo
@@ -185,7 +185,7 @@ if [[ $ROLE == all ]]; then
       fi
       read -rsp "Again:    " PW2; echo
       if [[ $PW1 != "$PW2" ]]; then echo "They don't match, try again."; continue; fi
-      if [[ ${#PW1} -lt 8 ]]; then echo "Too short, try again."; continue; fi
+      if [[ ${#PW1} -lt 4 ]]; then echo "Too short, try again."; continue; fi
       PW_HASH="$(printf '%s\n' "$PW1" | python3 "$PREFIX/hub/hub.py" --hash-password)"
       unset PW1 PW2
       say "Password set"
