@@ -207,7 +207,26 @@ function MachineCard({ m }) {
         </Row>
 
         <Row label="GPU">
-          {g ? (
+          {g && g.vendor === "amd" ? (
+            <>
+              <span className="gm-big">{Math.round(g.busy || 0)}%</span>
+              {num(g.temp) && <span className="gm-big"><Temp value={g.temp} warn={80} hot={90} /></span>}
+              <span className="gm-sub">
+                {g.asleep ? "asleep" : num(g.hotspot) ? <>hotspot <Temp value={g.hotspot} warn={95} hot={105} /></> : ""}
+              </span>
+              <span className="gm-sub gm-push">
+                {num(g.gpu_w) && <><b>{g.gpu_w.toFixed(0)} W</b> · </>}
+                {num(g.freq_mhz) ? `${g.freq_mhz} MHz` : ""}
+                {num(g.fan_rpm) ? ` · fan ${g.fan_rpm ? `${g.fan_rpm.toLocaleString()} RPM` : "off"}` : ""}
+              </span>
+              {num(g.vram_total) && g.vram_total > 0 && (
+                <>
+                  <span className="gm-sub">VRAM <b>{fmtBytes(g.vram_used)}</b> of {fmtBytes(g.vram_total)}</span>
+                  <Bar pct={(100 * g.vram_used) / g.vram_total} warn={85} hot={95} />
+                </>
+              )}
+            </>
+          ) : g ? (
             <>
               <span className="gm-big">{Math.round(g.busy || 0)}%</span>
               <span className="gm-sub">

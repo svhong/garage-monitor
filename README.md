@@ -47,6 +47,8 @@ The installer will:
 
 1. Detect the distro and install `python3-psutil`, plus the Intel GPU tools on
    Intel machines (`intel-gpu-tools` with apt, `igt-gpu-tools` with dnf).
+   AMD GPUs need nothing extra: load, temperature, power, VRAM and the card's
+   fan are read straight from the driver.
 2. Create a locked-down system user `gmon` (no login, no home folder).
 3. Copy the program to `/opt/garage-monitor` and its settings to `/etc/garage-monitor`.
 4. Set up two systemd services that start on boot:

@@ -27,7 +27,7 @@ import urllib.request
 
 import psutil
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 HUB_URL = os.environ.get("GM_HUB_URL", "http://127.0.0.1:8787").rstrip("/")
 TOKEN = os.environ.get("GM_TOKEN", "")
@@ -174,6 +174,98 @@ class GpuReader:
         return None
 
 
+class AmdGpuReader:
+    """Reads AMD GPU load, temperature, power and VRAM straight from sysfs.
+
+    The amdgpu driver publishes all of this as small world-readable files, so
+    there is no helper program, no extra package and no extra permission.
+    With several AMD GPUs (e.g. a graphics card plus the CPU's integrated
+    graphics) it watches the one with the most VRAM, i.e. the graphics card.
+    """
+
+    def __init__(self):
+        self.error = None
+        self.dev = None
+        self.hwmon = None
+        best_vram = -1
+        for card in sorted(glob.glob("/sys/class/drm/card[0-9]*")):
+            dev = card + "/device"
+            if read_file(dev + "/vendor") != "0x1002" or not os.path.exists(dev + "/gpu_busy_percent"):
+                continue
+            vram = self._int(dev + "/mem_info_vram_total") or 0
+            if vram > best_vram:
+                best_vram, self.dev = vram, dev
+        if not self.dev:
+            self.error = "no AMD GPU found"
+            return
+        for hw in glob.glob(self.dev + "/hwmon/hwmon*"):
+            if read_file(hw + "/name") == "amdgpu":
+                self.hwmon = hw
+                break
+
+    @staticmethod
+    def _int(path):
+        val = read_file(path)
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return None
+
+    def _temps(self):
+        """amdgpu labels its sensors: edge (the usual "GPU temp"),
+        junction (hotspot) and mem (VRAM). Values are in millidegrees."""
+        out = {}
+        for label_path in glob.glob(self.hwmon + "/temp*_label"):
+            val = self._int(label_path[:-len("_label")] + "_input")
+            if val is not None:
+                out[read_file(label_path)] = val / 1000
+        return out
+
+    def _freq(self):
+        # pp_dpm_sclk lists the clock steps; the current one ends with "*".
+        for line in (read_file(self.dev + "/pp_dpm_sclk", "") or "").splitlines():
+            if line.rstrip().endswith("*"):
+                digits = "".join(ch for ch in line.split(":", 1)[-1] if ch.isdigit())
+                return int(digits) if digits else None
+        return None
+
+    def snapshot(self):
+        if not self.dev:
+            return None
+        busy = self._int(self.dev + "/gpu_busy_percent")
+        if busy is None:
+            # A powered-down GPU refuses the read rather than waking up.
+            if read_file(self.dev + "/power/runtime_status") == "suspended":
+                return {"vendor": "amd", "busy": 0.0, "asleep": True}
+            self.error = "can't read gpu_busy_percent"
+            return None
+        self.error = None
+        out = {"vendor": "amd", "busy": float(busy), "asleep": False,
+               "freq_mhz": self._freq(),
+               "vram_used": self._int(self.dev + "/mem_info_vram_used"),
+               "vram_total": self._int(self.dev + "/mem_info_vram_total")}
+        if self.hwmon:
+            temps = self._temps()
+            out["temp"] = temps.get("edge")
+            out["hotspot"] = temps.get("junction")
+            out["mem_temp"] = temps.get("mem")
+            # Newer GPUs report a 1-second average; older ones only the instant value.
+            uw = self._int(self.hwmon + "/power1_average")
+            if uw is None:
+                uw = self._int(self.hwmon + "/power1_input")
+            out["gpu_w"] = round(uw / 1_000_000, 1) if uw is not None else None
+            out["fan_rpm"] = self._int(self.hwmon + "/fan1_input")
+        return out
+
+
+def make_gpu_reader():
+    """AMD if the machine has one, otherwise Intel."""
+    vendors = {read_file(p) for p in glob.glob("/sys/class/drm/card*/device/vendor")}
+    if "0x1002" in vendors:  # 0x1002 = AMD
+        return AmdGpuReader()
+    return GpuReader()
+
+
 class HermesWatcher:
     """Finds the Hermes processes and works out whether Hermes is healthy."""
 
@@ -270,7 +362,8 @@ def read_fan():
         fans = psutil.sensors_fans()
     except Exception:
         return None
-    for name in ["dell_smm"] + sorted(fans):
+    # The AMD graphics card's own fan is shown on the GPU row instead.
+    for name in ["dell_smm"] + sorted(n for n in fans if n != "amdgpu"):
         for f in fans.get(name, []):
             return f.current
     return None
@@ -313,7 +406,7 @@ def read_power():
 class Collector:
     def __init__(self):
         self.info = static_info()
-        self.gpu = GpuReader()
+        self.gpu = make_gpu_reader()
         self.hermes = HermesWatcher(HERMES_USER) if HERMES_USER else None
         self.last_net = None
         psutil.cpu_percent(percpu=True)  # first call only sets a baseline

@@ -262,7 +262,15 @@ function renderMachine(m) {
   }
 
   let gpuHtml;
-  if (g) {
+  if (g && g.vendor === "amd") {
+    gpuHtml = `<span class="big">${Math.round(g.busy || 0)}%</span>
+      ${num(g.temp) ? `<span class="big">${temp(g.temp, 80, 90)}</span>` : ""}
+      <span class="sub">${g.asleep ? "asleep" : num(g.hotspot) ? `hotspot ${temp(g.hotspot, 95, 105)}` : ""}</span>
+      <span class="sub push">${num(g.gpu_w) ? `<b>${g.gpu_w.toFixed(0)} W</b> · ` : ""}${num(g.freq_mhz) ? g.freq_mhz + " MHz" : ""}${
+        num(g.fan_rpm) ? ` · fan ${g.fan_rpm ? g.fan_rpm.toLocaleString() + " RPM" : "off"}` : ""}</span>
+      ${num(g.vram_total) && g.vram_total > 0 ? `<span class="sub">VRAM <b>${fmtBytes(g.vram_used)}</b> of ${fmtBytes(g.vram_total)}</span>
+      ${bar(100 * g.vram_used / g.vram_total, 85, 95)}` : ""}`;
+  } else if (g) {
     const asleep = num(g.rc6) && g.rc6 >= 95 && (g.busy || 0) < 1;
     gpuHtml = `<span class="big">${Math.round(g.busy || 0)}%</span>
       <span class="sub">${asleep ? "asleep" : `${g.freq_mhz || 0} MHz`}</span>
