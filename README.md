@@ -56,6 +56,16 @@ The installer will:
 
 To update after a `git pull`, run `sudo ./install.sh` again. The access token is kept.
 
+## Viewer password, HTTPS and your website
+
+The first install asks for a **viewer password**, which is needed to open the
+dashboard. The hub checks it; it never lives in any web page. Change it any
+time with `sudo ./install.sh --set-password`.
+
+To show the dashboard on your own website, use the React component in
+[`web/`](web/README.md). It needs the hub on HTTPS (`--https`) and your site's
+address allowed (`--allow-origin https://your-site.com`).
+
 ## Add another machine later
 
 On the new machine (Ubuntu/Debian, signed in to Tailscale):
