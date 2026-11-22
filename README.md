@@ -69,6 +69,18 @@ To show the dashboard on your own website, use the React component in
 [`web/`](web/README.md). It needs the hub on HTTPS (`--https`) and your site's
 address allowed (`--allow-origin https://your-site.com`).
 
+## Desktop widget (KDE Plasma)
+
+To watch your machines on the desktop without a browser, install the Plasma 6 widget
+on your desktop computer:
+
+```bash
+./plasmoid/install.sh
+```
+
+Then add **Garage Monitor** from **Add Widgets…** and set the hub address in its
+settings. See [`plasmoid/README.md`](plasmoid/README.md).
+
 ## Add another machine later
 
 On the new machine (Ubuntu/Debian or Fedora/RHEL, signed in to Tailscale):

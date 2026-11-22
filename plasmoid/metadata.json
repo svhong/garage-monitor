@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Sean Hong"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Live CPU, temperature, GPU, memory and disk for the machines reporting to your Garage Monitor hub",
+        "Icon": "utilities-system-monitor",
+        "Id": "com.svhong.garagemonitor",
+        "License": "MIT",
+        "Name": "Garage Monitor",
+        "Version": "0.1.0",
+        "Website": "https://github.com/svhong/garage-monitor"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

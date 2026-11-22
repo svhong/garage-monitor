@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="hubUrl" type="String">
+      <label>Address of the Garage Monitor hub</label>
+      <default>http://hermes-box:8787</default>
+    </entry>
+    <entry name="password" type="String">
+      <label>Viewer password (leave blank if the hub has none)</label>
+      <default></default>
+    </entry>
+    <entry name="pollSeconds" type="Int">
+      <label>Seconds between updates</label>
+      <default>2</default>
+      <min>1</min>
+      <max>60</max>
+    </entry>
+    <entry name="machineFilter" type="String">
+      <label>Comma-separated machine names to show; blank shows all</label>
+      <default></default>
+    </entry>
+    <entry name="showSparklines" type="Bool">
+      <label>Show the 5-minute CPU and temperature graph</label>
+      <default>true</default>
+    </entry>
+  </group>
+</kcfg>
