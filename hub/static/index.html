@@ -69,6 +69,7 @@
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
     max-width: 1240px; margin: 0 auto;
   }
+  main[hidden] { display: none; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
   .card-head {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -354,10 +355,18 @@ function saveToken(t) {
 }
 function showLogin(show) {
   document.getElementById("login").hidden = !show;
-  document.getElementById("machines").hidden = show;
-  document.getElementById("footer").hidden = show;
+  const machines = document.getElementById("machines");
+  const footer = document.getElementById("footer");
+  machines.hidden = show;
+  footer.hidden = show;
   if (show) {
+    clearTimeout(timer);
+    pollController?.abort();
+    machines.replaceChildren();
+    footer.textContent = "Loading…";
     document.getElementById("summary").innerHTML = "";
+    document.getElementById("banner").classList.remove("show");
+    document.getElementById("logout").hidden = true;
     document.getElementById("password").focus();
   }
 }
@@ -385,21 +394,24 @@ document.getElementById("login").addEventListener("submit", async (ev) => {
 function logout() {
   fetch("api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }).catch(() => {});
   saveToken("");
-  clearTimeout(timer);
-  document.getElementById("logout").hidden = true;
   showLogin(true);
 }
 
-let timer;
+let timer, pollController;
 async function poll() {
+  const { signal } = pollController = new AbortController();
   try {
-    const res = await fetch("api/machines", { cache: "no-store", headers: token ? { Authorization: "Bearer " + token } : {} });
+    const res = await fetch("api/machines", { cache: "no-store", signal, headers: token ? { Authorization: "Bearer " + token } : {} });
+    if (signal.aborted) return;
     if (res.status === 401) { saveToken(""); showLogin(true); return; }
     if (!res.ok) throw new Error(res.status);
-    render(await res.json());
+    const data = await res.json();
+    if (signal.aborted) return;
+    render(data);
     document.getElementById("banner").classList.remove("show");
     document.getElementById("logout").hidden = !token;
   } catch (e) {
+    if (signal.aborted) return;
     document.getElementById("banner").classList.add("show");
   }
   timer = setTimeout(poll, POLL_MS);
